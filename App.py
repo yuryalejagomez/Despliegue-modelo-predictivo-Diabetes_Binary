@@ -9,92 +9,85 @@ Original file is located at
 
 import pickle
 import pandas as pd
-
-filename = 'modelo-cla -diabetes.pkl'
-
-modelo, encoder, variables, scaler = pickle.load(open(filename, 'rb'))
-
-#Interfaz gráfica
-#Se crea interfaz gráfica con streamlit para captura de los datos
-
 import streamlit as st
 
+# Configuración inicial de la página
+st.set_page_config(page_title="Predicción de Diabetes", layout="centered")
 st.title('Sistema de Predicción de Diabetes')
 
-BMI = st.slider('BMI', min_value=0.0, max_value=70.0, value=25.0, step=0.1)
+@st.cache_resource
+def cargar_modelo():
+    filename = 'modelo-cla -diabetes.pkl'
+    return pickle.load(open(filename, 'rb'))
 
-MentHlth = st.slider('Mental Health', 0, 30, 0)
+modelo, encoder, variables, scaler = cargar_modelo()
 
-PhysHlth = st.slider('Physical Health', 0, 30, 0)
+# Diccionarios globales para el mapeo visual de las opciones en español
+opciones_si_no = {0: "No", 1: "Sí"}
+opciones_sexo = {0: "Femenino", 1: "Masculino"}
+opciones_salud = {1: "Excelente", 2: "Muy Buena", 3: "Buena", 4: "Regular", 5: "Mala"}
 
-GenHlth = st.selectbox('General Health',
-                       [1,2,3,4,5])
+opciones_edad = {
+    1: "18 a 24 años", 2: "25 a 29 años", 3: "30 a 34 años", 4: "35 a 39 años",
+    5: "40 a 44 años", 6: "45 a 49 años", 7: "50 a 54 años", 8: "55 a 59 años",
+    9: "60 a 64 años", 10: "65 a 69 años", 11: "70 a 74 años", 12: "75 a 79 años",
+    13: "80 años o más"
+}
 
-Age = st.selectbox('Age',
-                   [1,2,3,4,5,6,7,8,9,10,11,12,13])
+opciones_ingresos = {
+    1: "Menos de $10,000 USD al año", 2: "$10,000 a menos de $15,000 USD al año",
+    3: "$15,000 a menos de $20,000 USD al año", 4: "$20,000 a menos de $25,000 USD al año",
+    5: "$25,000 a menos de $35,000 USD al año", 6: "$35,000 a menos de $50,000 USD al año",
+    7: "$50,000 a menos de $75,000 USD al año", 8: "$75,000 USD o más al año"
+}
 
-Education = st.selectbox('Education',
-                         [1,2,3,4,5,6])
+opciones_educacion = {
+    1: "Nunca asistió a la escuela o solo jardín de niños",
+    2: "Educación primaria (Grados 1 a 8)",
+    3: "Educación secundaria incompleta (Grados 9 a 11)",
+    4: "Graduado de secundaria o equivalente (High School)",
+    5: "Asistió a la universidad o escuela técnica (Incompleta)",
+    6: "Graduado universitario o título superior"
+}
 
-Income = st.selectbox('Income',
-                      [1,2,3,4,5,6,7,8])
-
-HighBP = st.selectbox('High Blood Pressure',
-                      [0,1])
-
-HighChol = st.selectbox('High Cholesterol',
-                        [0,1])
-
-Smoker = st.selectbox('Smoker',
-                      [0,1])
-
-Stroke = st.selectbox('Stroke',
-                      [0,1])
-
-PhysActivity = st.selectbox('Physical Activity',
-                            [0,1])
-
-Fruits = st.selectbox('Fruits',
-                      [0,1])
-
-Veggies = st.selectbox('Veggies',
-                       [0,1])
-
-Sex = st.selectbox('Sex',
-                   [0,1])
-
-BMI = 25.0
-MentHlth = 5
-PhysHlth = 3
-GenHlth = 2
-Age = 5
-Education = 4
-Income = 6
-HighBP = 1
-HighChol = 0
-Smoker = 0
-Stroke = 0
-PhysActivity = 1
-Fruits = 1
-Veggies = 1
-Sex = 1
-
-# Crear diccionario con todas las variables en 0
-
-data_dict = {col:0 for col in variables}
+st.subheader("Datos Clínicos y Demográficos")
 
 # Variables numéricas
+BMI = st.slider('Índice de Masa Corporal (BMI)', min_value=0.0, max_value=70.0, value=25.0, step=0.1)
+MentHlth = st.slider('Días con mala salud mental (últimos 30 días)', 0, 30, 0)
+PhysHlth = st.slider('Días con mala salud física (últimos 30 días)', 0, 30, 0)
+
+# Variables categóricas y ordinales con mapeo de texto
+GenHlth = st.selectbox('Salud General Autopercibida', [1, 2, 3, 4, 5], format_func=lambda x: opciones_salud.get(x))
+Age = st.selectbox('Seleccione su rango de edad', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], format_func=lambda x: opciones_edad[x])
+Education = st.selectbox('Nivel educativo alcanzado', [1, 2, 3, 4, 5, 6], format_func=lambda x: opciones_educacion[x])
+Income = st.selectbox('Seleccione el nivel de ingresos estimado del paciente', [1, 2, 3, 4, 5, 6, 7, 8], format_func=lambda x: opciones_ingresos[x])
+
+# Variables binarias optimizadas para el usuario
+HighBP = st.selectbox('¿Tiene Presión Arterial Alta?', [0, 1], format_func=lambda x: opciones_si_no[x])
+HighChol = st.selectbox('¿Tiene Colesterol Alto?', [0, 1], format_func=lambda x: opciones_si_no[x])
+Smoker = st.selectbox('¿Ha fumado al menos 100 cigarrillos en su vida?', [0, 1], format_func=lambda x: opciones_si_no[x])
+Stroke = st.selectbox('¿Ha sufrido un Accidente Cerebrovascular (Derrame)?', [0, 1], format_func=lambda x: opciones_si_no[x])
+PhysActivity = st.selectbox('¿Realizó actividad física en los últimos 30 días?', [0, 1], format_func=lambda x: opciones_si_no[x])
+Fruits = st.selectbox('¿Consume frutas diariamente?', [0, 1], format_func=lambda x: opciones_si_no[x])
+Veggies = st.selectbox('¿Consume verduras diariamente?', [0, 1], format_func=lambda x: opciones_si_no[x])
+Sex = st.selectbox('Sexo Biológico', [0, 1], format_func=lambda x: opciones_sexo[x])
+
+# Crear diccionario base con todas las variables en 0
+data_dict = {col: 0 for col in variables}
+
+# Asignación de variables numéricas
 data_dict['BMI'] = BMI
 data_dict['MentHlth'] = MentHlth
 data_dict['PhysHlth'] = PhysHlth
 
-# Variables categóricas
+# Asignación de variables categóricas (One-Hot Encoding manual)
 data_dict[f'GenHlth_{GenHlth}'] = 1
 data_dict[f'Age_{Age}'] = 1
 data_dict[f'Education_{Education}'] = 1
 data_dict[f'Income_{Income}'] = 1
 
-# Variables binarias
+# Asignación de variables binarias
 data_dict['HighBP_1'] = HighBP
 data_dict['HighChol_1'] = HighChol
 data_dict['Smoker_1'] = Smoker
@@ -104,14 +97,17 @@ data_dict['Fruits_1'] = Fruits
 data_dict['Veggies_1'] = Veggies
 data_dict['Sex_1'] = Sex
 
-# Crear dataframe
+# Crear dataframe final para pasarle al predictor
 data = pd.DataFrame([data_dict])
 
-prediccion = modelo.predict(data)
+st.markdown("---")
 
-if prediccion[0] == 1:
-    st.error('El paciente puede tener diabetes')
-else:
-    st.success('El paciente no presenta diabetes')
-
-st.warning("El modelo XGBoost tiene una precisión del 83.7%")
+if st.button('Evaluar Paciente'):
+    prediccion = modelo.predict(data)
+    
+    if prediccion[0] == 1:
+        st.error('⚠️ El paciente puede tener diabetes')
+    else:
+        st.success('✅ El paciente no presenta indicadores de riesgo de diabetes')
+        
+    st.warning("Nota técnica: El modelo XGBoost tiene una precisión del 83.7%")
